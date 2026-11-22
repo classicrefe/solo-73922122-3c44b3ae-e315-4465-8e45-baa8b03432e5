@@ -1,0 +1,18 @@
+{% extends "base.html" %}
+{% block title %}无法确认 · 换表{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel-head"><h2>本次确认未生效</h2></div>
+  <div class="flash bad">
+    <strong>{{ message }}</strong>
+    {% if details %}<ul>{% for d in details %}<li>{{ d }}</li>{% endfor %}</ul>{% endif %}
+  </div>
+  <p class="muted">原分档表与全部试片记录状态均未改变。</p>
+  <div class="actions">
+    <a class="button primary" href="{{ url_for('index') }}">重新上传并预览</a>
+    {% if snapshot %}
+      <a class="button" href="{{ url_for('view_preview', batch_id=snapshot.batch_id) }}">查看该批次</a>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

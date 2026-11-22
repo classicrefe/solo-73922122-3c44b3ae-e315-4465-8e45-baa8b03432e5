@@ -1,0 +1,150 @@
+{% extends "base.html" %}
+{% block content %}
+{% if notice %}<div class="flash ok">{{ notice }}</div>{% endif %}
+{% if error %}
+<div class="flash bad">
+  <strong>{{ error.title }}</strong>
+  {% if error.details %}<ul>{% for d in error.details %}<li>{{ d }}</li>{% endfor %}</ul>{% endif %}
+</div>
+{% endif %}
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>现行分档表</h2>
+    <span class="muted">
+      试片 {{ record_count }} / {{ max_records }} 条
+      {% if current %}· 生效批次 #{{ current.batch_id }}（{{ current.confirmed_at }}）{% endif %}
+    </span>
+  </div>
+  {% if current %}
+  <div class="tables">
+    <div>
+      <h3>烘烤前</h3>
+      <table class="grid">
+        <thead><tr><th>档</th><th>闭区间 (µm)</th><th>件数</th><th>已占</th></tr></thead>
+        <tbody>
+        {% for band in current.before %}
+          <tr class="{{ 'full' if band.used >= band.pieces else '' }}">
+            <td>{{ band.position + 1 }}</td>
+            <td>{{ band.low }} – {{ band.high }}</td>
+            <td>{{ band.pieces }}</td>
+            <td>{{ band.used }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3>烘烤后</h3>
+      <table class="grid">
+        <thead><tr><th>档</th><th>闭区间 (µm)</th><th>件数</th><th>已占</th></tr></thead>
+        <tbody>
+        {% for band in current.after %}
+          <tr class="{{ 'full' if band.used >= band.pieces else '' }}">
+            <td>{{ band.position + 1 }}</td>
+            <td>{{ band.low }} – {{ band.high }}</td>
+            <td>{{ band.pieces }}</td>
+            <td>{{ band.used }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+  <p class="muted">
+    现行有效 {{ current.active_count }} 条，待复核 {{ current.review_count }} 条
+    （共 {{ current.record_total }} 条）。
+  </p>
+  {% else %}
+  <p class="muted">尚未启用任何分档表。</p>
+  {% endif %}
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>上传两张更正表并预览</h2></div>
+  <p class="muted">
+    每行一个档，写「下限-上限 件数」，闭区间、整数微米；同一张表内各档互不重叠，两张表总件数必须一致。
+    可直接粘贴，或选择 UTF-8 文本文件（选了文件则以文件内容为准）。
+  </p>
+  <form method="post" action="{{ url_for('preview') }}" enctype="multipart/form-data" class="swap-form">
+    <div class="tables">
+      <label>
+        <span>烘烤前表</span>
+        <textarea name="before" rows="7" spellcheck="false">{{ form.before }}</textarea>
+        <input type="file" name="before_file" accept=".txt,.csv,text/plain">
+      </label>
+      <label>
+        <span>烘烤后表</span>
+        <textarea name="after" rows="7" spellcheck="false">{{ form.after }}</textarea>
+        <input type="file" name="after_file" accept=".txt,.csv,text/plain">
+      </label>
+    </div>
+    <label class="note">
+      <span>备注（可选）</span>
+      <input type="text" name="note" value="{{ form.note }}" placeholder="例如：2026-11 复测后更正">
+    </label>
+    <button type="submit" class="primary">预览保留结果</button>
+  </form>
+</section>
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>试片记录</h2>
+    <a class="link" href="{{ url_for('records') }}">查看全部 →</a>
+  </div>
+  <table class="grid compact">
+    <thead><tr><th>#</th><th>试片号</th><th>烘烤前 µm</th><th>烘烤后 µm</th><th>状态</th></tr></thead>
+    <tbody>
+    {% for r in records %}
+      <tr>
+        <td>{{ r.id }}</td>
+        <td>{{ r.coupon_no }}</td>
+        <td>{{ r.before_um }}</td>
+        <td>{{ r.after_um }}</td>
+        <td><span class="tag {{ r.status }}">{{ '现行有效' if r.status == 'active' else '待复核' }}</span></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+<details class="panel">
+  <summary><h2>导入试片记录（最多 {{ max_records }} 条，按登记顺序）</h2></summary>
+  <p class="muted">
+    每行「试片号 烘烤前 烘烤后」，按粘贴顺序登记；重复的试片号会被跳过。
+    文本框已填入演示记录，可整段替换或改用文件上传。
+  </p>
+  <form method="post" action="{{ url_for('import_records') }}" enctype="multipart/form-data">
+    <textarea name="records" rows="10" spellcheck="false">{{ demo_records }}</textarea>
+    <p><input type="file" name="records_file" accept=".txt,.csv,text/plain"></p>
+    <button type="submit">按顺序导入</button>
+  </form>
+</details>
+
+<section class="panel">
+  <div class="panel-head"><h2>换表批次</h2></div>
+  <table class="grid compact">
+    <thead><tr><th>批次</th><th>状态</th><th>创建</th><th>确认</th><th>备注</th><th></th></tr></thead>
+    <tbody>
+    {% for b in batches %}
+      <tr>
+        <td>#{{ b.id }}</td>
+        <td><span class="tag {{ b.status }}">{{ {'draft':'待确认','confirmed':'已生效','superseded':'已被取代'}[b.status] }}</span></td>
+        <td class="muted">{{ b.created_at }}</td>
+        <td class="muted">{{ b.confirmed_at or '—' }}</td>
+        <td>{{ b.note or '—' }}</td>
+        <td><a class="link" href="{{ url_for('view_preview', batch_id=b.id) }}">查看</a></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  {% if config.get('SEED_DEMO') %}
+  <form method="post" action="{{ url_for('reset_demo') }}" onsubmit="return confirm('重置演示数据？');">
+    <button type="submit" class="ghost">重置演示数据</button>
+  </form>
+  {% endif %}
+  <p class="muted">
+    换表后，落选的现行有效记录会变为「待复核」；待复核记录不会被后续换表重新纳入保留集。
+  </p>
+</section>
+{% endblock %}

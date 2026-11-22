@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% block title %}试片台账 · 换表{% endblock %}
+{% block content %}
+<section class="panel">
+  <div class="panel-head">
+    <h2>试片台账</h2>
+    <span class="muted">{{ record_count }} / {{ max_records }} 条，按登记顺序</span>
+  </div>
+  <p class="muted">登记顺序即保留优先级：件数不足时，越早登记的记录越优先保留。</p>
+  <table class="grid">
+    <thead><tr><th>#</th><th>试片号</th><th>烘烤前 µm</th><th>烘烤后 µm</th><th>状态</th></tr></thead>
+    <tbody>
+    {% for r in records %}
+      <tr>
+        <td>{{ r.id }}</td>
+        <td>{{ r.coupon_no }}</td>
+        <td>{{ r.before_um }}</td>
+        <td>{{ r.after_um }}</td>
+        <td><span class="tag {{ r.status }}">{{ '现行有效' if r.status == 'active' else '待复核' }}</span></td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+  <a class="link" href="{{ url_for('index') }}">← 返回换表页</a>
+</section>
+{% endblock %}

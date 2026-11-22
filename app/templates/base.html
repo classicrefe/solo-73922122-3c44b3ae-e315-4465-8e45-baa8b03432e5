@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}涂层实验室 · 膜厚分档换表{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
+<body>
+<header class="topbar">
+  <div class="brand">
+    <span class="mark">膜厚</span>
+    <div>
+      <h1>涂层实验室 · 膜厚分档换表</h1>
+      <p>烘烤前后两张现行表，按登记顺序保留试片</p>
+    </div>
+  </div>
+  <nav>
+    <a href="{{ url_for('index') }}">换表页</a>
+    <a href="{{ url_for('records') }}">试片台账</a>
+  </nav>
+</header>
+<main>
+  {% block content %}{% endblock %}
+</main>
+<footer>
+  <p>记录只保留登记顺序与整数微米读数；落选试片一律标记「待复核」，不改动原始读数。</p>
+</footer>
+</body>
+</html>

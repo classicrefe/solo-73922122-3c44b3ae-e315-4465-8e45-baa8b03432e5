@@ -1,0 +1,14 @@
+services:
+  web:
+    build: .
+    ports:
+      - "${COATING_PORT:-8000}:8000"
+    environment:
+      COATING_DB: /data/coating.db
+      PORT: "8000"
+    volumes:
+      - coating-data:/data
+    restart: unless-stopped
+
+volumes:
+  coating-data:

@@ -1,0 +1,136 @@
+{% extends "base.html" %}
+{% block title %}预览 · 换表{% endblock %}
+{% block content %}
+{% if snapshot.stale %}
+<div class="flash bad">
+  <strong>{{ snapshot.stale_reason }}本页仅作历史查看，不能确认。</strong>
+</div>
+{% endif %}
+
+<section class="panel">
+  <div class="panel-head">
+    <h2>预览：批次 #{{ snapshot.batch_id }}</h2>
+    <a class="link" href="{{ url_for('index') }}">← 返回换表页</a>
+  </div>
+  <p class="muted">
+    最多可保留 <strong>{{ payload.retained_count }}</strong> 条现行有效记录；
+    试片共 {{ payload.total_count }} 条，其中现行有效 {{ payload.active_count }} 条。
+  </p>
+  <div class="stats">
+    <div class="stat good"><span>保留</span><strong>{{ payload.retained_count }}</strong></div>
+    <div class="stat bad"><span>落选转待复核</span><strong>{{ payload.displaced|length }}</strong></div>
+    <div class="stat mute"><span>此前已待复核</span><strong>{{ payload.already_under_review|length }}</strong></div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>两张新表与占位</h2></div>
+  <div class="tables">
+    <div>
+      <h3>烘烤前（新表）</h3>
+      <table class="grid">
+        <thead><tr><th>档</th><th>闭区间 (µm)</th><th>件数</th><th>保留</th><th>余量</th></tr></thead>
+        <tbody>
+        {% for band in payload.before_usage %}
+          <tr class="{{ 'full' if band.free == 0 else '' }}">
+            <td>{{ band.position + 1 }}</td>
+            <td>{{ band.low }} – {{ band.high }}</td>
+            <td>{{ band.pieces }}</td>
+            <td>{{ band.used }}</td>
+            <td>{{ band.free }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+    <div>
+      <h3>烘烤后（新表）</h3>
+      <table class="grid">
+        <thead><tr><th>档</th><th>闭区间 (µm)</th><th>件数</th><th>保留</th><th>余量</th></tr></thead>
+        <tbody>
+        {% for band in payload.after_usage %}
+          <tr class="{{ 'full' if band.free == 0 else '' }}">
+            <td>{{ band.position + 1 }}</td>
+            <td>{{ band.low }} – {{ band.high }}</td>
+            <td>{{ band.pieces }}</td>
+            <td>{{ band.used }}</td>
+            <td>{{ band.free }}</td>
+          </tr>
+        {% endfor %}
+        </tbody>
+      </table>
+    </div>
+  </div>
+</section>
+
+<section class="panel">
+  <div class="panel-head"><h2>保留记录（按登记顺序）</h2></div>
+  <table class="grid compact">
+    <thead><tr><th>#</th><th>试片号</th><th>烘烤前</th><th>前档</th><th>烘烤后</th><th>后档</th></tr></thead>
+    <tbody>
+    {% for r in payload.retained %}
+      <tr>
+        <td>{{ r.record_id }}</td>
+        <td>{{ r.coupon_no }}</td>
+        <td>{{ r.before_um }}</td>
+        <td>{{ r.before_position + 1 }}（{{ r.before_band[0] }}–{{ r.before_band[1] }}）</td>
+        <td>{{ r.after_um }}</td>
+        <td>{{ r.after_position + 1 }}（{{ r.after_band[0] }}–{{ r.after_band[1] }}）</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+
+{% if payload.displaced %}
+<section class="panel">
+  <div class="panel-head"><h2>落选记录（确认后转待复核）</h2></div>
+  <table class="grid compact">
+    <thead><tr><th>#</th><th>试片号</th><th>烘烤前</th><th>烘烤后</th><th>原因</th></tr></thead>
+    <tbody>
+    {% for r in payload.displaced %}
+      <tr>
+        <td>{{ r.record_id }}</td>
+        <td>{{ r.coupon_no }}</td>
+        <td>{{ r.before_um }}</td>
+        <td>{{ r.after_um }}</td>
+        <td>{{ r.reason_label }}</td>
+      </tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+{% if payload.already_under_review %}
+<section class="panel">
+  <div class="panel-head">
+    <h2>此前已待复核（不参与本次保留）</h2>
+  </div>
+  <table class="grid compact">
+    <thead><tr><th>#</th><th>试片号</th><th>烘烤前</th><th>烘烤后</th></tr></thead>
+    <tbody>
+    {% for r in payload.already_under_review %}
+      <tr><td>{{ r.record_id }}</td><td>{{ r.coupon_no }}</td><td>{{ r.before_um }}</td><td>{{ r.after_um }}</td></tr>
+    {% endfor %}
+    </tbody>
+  </table>
+</section>
+{% endif %}
+
+<section class="panel confirm">
+  {% if snapshot.stale %}
+    <p class="muted">此预览已失效，请返回换表页重新上传并预览。</p>
+    <a class="button" href="{{ url_for('index') }}">返回重新预览</a>
+  {% else %}
+    <p class="muted">
+      确认后将同时启用两张新表，并把 {{ payload.displaced|length }} 条落选记录标记为待复核。
+      若写入失败，原表与记录状态都不会改变。
+    </p>
+    <form method="post" action="{{ url_for('confirm', batch_id=snapshot.batch_id) }}">
+      <input type="hidden" name="token" value="{{ snapshot.token }}">
+      <button type="submit" class="primary">确认换表生效</button>
+    </form>
+  {% endif %}
+</section>
+{% endblock %}
